@@ -213,6 +213,6 @@ This script:
 
 ## Citation
 
-If you use this code in your research, please cite LF-CK.
+If you use this code in your research, please cite SPCC.
 
 
