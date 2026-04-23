@@ -1,4 +1,4 @@
-# LF-CK: Local Differentially Private Clique Counting
+# Local Differentially Private Clique Counting
 
 This project implements algorithms for counting cliques in graphs under local differential privacy constraints. The implementation includes both baseline randomized response methods and optimized K-Star methods.
 
