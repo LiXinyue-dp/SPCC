@@ -1,9 +1,9 @@
-# SPCC: Secure Privacy-Preserving Clique Counting
+# SPCC
 
-This project implements algorithms for counting cliques in graphs under local differential privacy constraints, as described in the SPCC paper. The implementation includes two main methods:
+This project implements algorithms for counting cliques in graphs under Local Differential Privacy (LDP), as described in the SPCC paper. The implementation includes two main methods:
 
-- **EPCC** (Enhanced Privacy-Preserving Clique Counting): Enhanced baseline with optimal padding (Lopt) and degree-based grouping
-- **SPCC** (Secure Privacy-Preserving Clique Counting): Builds on EPCC with cross-checking and candidate validation
+- **EPCC** (Edge-based Private Clique Counting) — a baseline method
+- **SPCC** (Star-based Private Clique Counting) — the proposed optimized framework
 
 ## Project Structure
 
@@ -29,14 +29,16 @@ This project implements algorithms for counting cliques in graphs under local di
 
 ## Features
 
-- **Privacy-Preserving Clique Counting**: Implements local differential privacy for 3-clique (triangle) and 4-clique counting
-- **Multiple Algorithms**:
-  - **EPCC** (Method 1): Enhanced baseline with optimal padding (Lopt) and degree-based grouping
-  - **SPCC** (Method 2): Full secure method with cross-checking and candidate validation
-- **Optimal Padding (Lopt)**: Automatically computes the optimal padding parameter to minimize estimation error (Section 4.2)
-- **Degree-Based Grouping**: Uses Laplace noise + quantile-based splitting for privacy-preserving degree grouping (Section 4.3)
-- **Cross-Checking**: Verifies reported edges between nodes for improved accuracy (Section 5.2)
-- **Candidate Validation**: For 4-cliques, validates all mutual edges among candidate nodes (Section 5.2)
+- **Privacy-Preserving Clique Counting**: Implements Local Differential Privacy for q-clique counting (including 3-clique/triangle and 4-clique)
+- **Two-Phase Framework (SPCC)**:
+  - **Phase 1 — Degree Estimation & Parameter Setup**: Each user perturbs their true degree with Laplace noise; the server computes optimal parameters (k, L) and assigns degree-homogeneous buckets
+  - **Phase 2 — Local Perturbation & Data Collection**: Users construct local k-star representations, apply PD and AGP mechanisms, then the server performs targeted structural estimation
+- **Two Core Mechanisms (SPCC)**:
+  - **Padding-and-Dropping (PD)**: Standardizes report lengths to a theoretically optimal value L to conceal true degrees and minimize estimation error
+  - **Adaptive Grouping Perturbation (AGP)**: Partitions users into fine-grained degree-homogeneous buckets based on privatized degrees, applying localized GRR perturbation to amplify structural signals
+- **Optimal Parameter Selection**: Automatically computes the optimal k-star size (Section 4.6) and padding length L (Section 4.2) to minimize estimation error
+- **Graph Projection**: Caps each node's neighborhood to the maximum noisy degree to bound the maximum report size
+- **Targeted Structural Estimation**: Instead of synthesizing a full noisy graph, the server performs algebraic rescaling on perturbed k-star reports to reconstruct clique counts efficiently
 
 ## Requirements
 
@@ -98,12 +100,12 @@ make
 
 - `[DatasetPath]`: Path to the dataset directory (e.g., `../data/dblp`)
 - `[q]`: Target clique size
-  - `3` for triangle counting
+  - `3` for triangle (3-clique) counting
   - `4` for 4-clique counting
 - `[Method]`: Algorithm selection
-  - `1` for EPCC (Enhanced Privacy-Preserving Clique Counting)
-  - `2` for SPCC (Secure Privacy-Preserving Clique Counting)
-- `[Eps]`: Privacy parameter epsilon
+  - `1` for EPCC (Edge-based Private Clique Counting) — baseline
+  - `2` for SPCC (Star-based Private Clique Counting) — optimized framework
+- `[Eps]`: Total privacy budget ε (= ε₁ + ε₂, where ε₁ is for degree perturbation and ε₂ for k-star perturbation)
 - `[EdgeFile]`: (Optional) Edge file name, default is `edges.csv`
 
 ### Examples
@@ -125,17 +127,29 @@ make
 
 ## Algorithm Details
 
-### EPCC (Section 5.1)
-EPCC extends the basic RR baseline with:
-1. **Optimal Padding (Lopt)**: Computed via loss function minimization to balance padding and dropping errors
-2. **Degree-Based Grouping**: Nodes are grouped by noisy degree (with Laplace noise) for targeted RR perturbation
-3. Each node creates (k-1)-tuples from its neighbors, pads/drops to Lopt elements, then applies RR perturbation
+### EPCC (Section 3) — Baseline
+EPCC is a baseline method grounded in standard unbiased estimation theory. It consists of three stages:
+1. **Local Perturbation**: Each user independently perturbs their adjacency vector using Randomized Response (RR), where each bit is retained with probability p = e^ε/(e^ε+1)
+2. **Algebraic Rescaling**: The server applies element-wise rescaling to obtain unbiased edge estimators, avoiding noisy graph synthesis
+3. **q-Clique Counting**: The server enumerates all q-node subsets and aggregates products of edge estimators
 
-### SPCC (Section 5.2)
-SPCC builds on EPCC with additional verification:
-1. **Cross-Checking**: For each reported edge (i,j) in G_i's report, verifies that i is also in G_j's report
-2. **Candidate Validation**: For 4-cliques, after finding potential 3-clique candidates, verifies all mutual cross-edges
-3. These steps filter out false edges introduced by RR perturbation
+**Limitations**: Independent edge perturbation causes severe variance explosion; the global search space of C(n,q) makes it computationally intractable for large graphs.
+
+### SPCC (Section 4) — Proposed Framework
+SPCC shifts the perturbation unit from isolated edges to cohesive k-stars, which naturally serve as structural building blocks for cliques.
+
+**Phase 1 — Degree Estimation & Parameter Setup (Section 4.2):**
+1. Each user perturbs their true degree with Laplace noise: d̃_u = d_u + Lap(2/ε₁)
+2. The server aggregates the noisy degree distribution, identifies maximum noisy degree d̂_max
+3. The server computes optimal k-star size k and padding length L
+4. Users are partitioned into degree-homogeneous buckets B based on noisy degrees
+
+**Phase 2 — Local Perturbation & Data Collection (Sections 4.3–4.5):**
+1. **Graph Projection**: Each user uniformly samples to retain at most d̂_max neighbors
+2. **k-star Construction**: Users construct the local set of all k-stars from their projected neighborhood
+3. **Padding-and-Dropping (PD)**: Standardizes all k-star sets to a universal length L
+4. **Adaptive Grouping Perturbation (AGP)**: Each neighbor in a k-star is perturbed over its localized bucket domain B+(v) using GRR, with privacy budget ε' = ε₂/(k·L)
+5. **Targeted Structural Estimation**: The server reconstructs clique counts via algebraic rescaling on the perturbed k-star reports, with estimated structural redundancy R̂_uv = C(d̃_u - 1, k - 1)
 
 ## Dataset Format
 
@@ -156,13 +170,14 @@ node1,node2
 ## Output
 
 The program will:
-1. Compute the optimal padding parameter (Lopt) for the dataset
-2. Run 10 independent experiments
-3. Report results for each experiment
-4. Output final statistics including:
-   - Original clique count
+1. Estimate the degree distribution (Phase 1)
+2. Compute the optimal padding parameter (L) and k-star size (k) for the dataset
+3. Run 10 independent experiments
+4. Report results for each experiment
+5. Output final statistics including:
+   - Original clique count (ground truth)
    - Average relative error across experiments
-   - Privacy parameters used
+   - Privacy parameters used (ε₁, ε₂, k, L)
 
 ### Sample Output
 
