@@ -4,11 +4,11 @@ CXXFLAGS	+= -isystem ./include
 CXXFLAGS	+= -MMD
 CC	= g++
 
-TARGET	=  LFCK
+TARGET	=  SPCC
 
 all: $(TARGET)
 
-LFCK: LFCK.o
+SPCC: SPCC.o
 
 clean:
 	rm -f *~ $(TARGET) *.d *.o

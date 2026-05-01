@@ -1,37 +1,42 @@
-# Local Differentially Private Clique Counting
+# SPCC: Secure Privacy-Preserving Clique Counting
 
-This project implements algorithms for counting cliques in graphs under local differential privacy constraints. The implementation includes both baseline randomized response methods and optimized K-Star methods.
+This project implements algorithms for counting cliques in graphs under local differential privacy constraints, as described in the SPCC paper. The implementation includes two main methods:
+
+- **EPCC** (Enhanced Privacy-Preserving Clique Counting): Enhanced baseline with optimal padding (Lopt) and degree-based grouping
+- **SPCC** (Secure Privacy-Preserving Clique Counting): Builds on EPCC with cross-checking and candidate validation
 
 ## Project Structure
 
 ```
 .
 ├── cpp/                      # C++ implementation
-│   ├── LFCK.cpp             # Main implementation file
-│   ├── Makefile             # Build configuration
-│   ├── MemoryOperation.h    # Memory management utilities
-│   ├── mt19937ar.h          # Mersenne Twister random number generator
-│   └── include/             # Third-party libraries
-│       ├── gcem.hpp         # Compile-time mathematical functions
-│       └── stats.hpp        # Statistical distributions library
-├── python/                  # Python preprocessing scripts
-│   └── IMDB.py             # IMDB dataset preprocessing
-├── data/                    # Dataset directory
-│   ├── dblp/               # DBLP collaboration network
-│   ├── IMDB/               # IMDB actor collaboration network
-│   ├── mit/                # MIT network data
-│   └── Orkut/              # Orkut social network
+│   ├── SPCC.cpp              # Main implementation file
+│   ├── Makefile              # Build configuration
+│   ├── MemoryOperation.h     # Memory management utilities
+│   ├── mt19937ar.h           # Mersenne Twister random number generator
+│   └── include/              # Third-party libraries
+│       ├── gcem.hpp          # Compile-time mathematical functions
+│       └── stats.hpp         # Statistical distributions library
+├── python/                   # Python preprocessing scripts
+│   └── IMDB.py              # IMDB dataset preprocessing
+├── data/                     # Dataset directory
+│   ├── dblp/                 # DBLP collaboration network
+│   ├── IMDB/                 # IMDB actor collaboration network
+│   ├── mit/                  # MIT network data
+│   └── Orkut/                # Orkut social network
 └── LICENSE
 ```
 
 ## Features
 
 - **Privacy-Preserving Clique Counting**: Implements local differential privacy for 3-clique (triangle) and 4-clique counting
-- **Multiple Algorithms**: 
-  - Baseline Randomized Response (RR) methods
-  - K-Star optimized methods for improved accuracy
-- **Automatic Optimization**: Computes optimal padding parameters for the dataset
-- **Experimental Framework**: Runs multiple experiments and reports average relative errors
+- **Multiple Algorithms**:
+  - **EPCC** (Method 1): Enhanced baseline with optimal padding (Lopt) and degree-based grouping
+  - **SPCC** (Method 2): Full secure method with cross-checking and candidate validation
+- **Optimal Padding (Lopt)**: Automatically computes the optimal padding parameter to minimize estimation error (Section 4.2)
+- **Degree-Based Grouping**: Uses Laplace noise + quantile-based splitting for privacy-preserving degree grouping (Section 4.3)
+- **Cross-Checking**: Verifies reported edges between nodes for improved accuracy (Section 5.2)
+- **Candidate Validation**: For 4-cliques, validates all mutual edges among candidate nodes (Section 5.2)
 
 ## Requirements
 
@@ -60,11 +65,9 @@ cd cpp
 make
 ```
 
-This will create an executable named `LFCK`.
+This will create an executable named `SPCC`.
 
 ### Windows
-
-You have several options:
 
 **Option 1: Using WSL (Recommended)**
 ```bash
@@ -79,7 +82,7 @@ make
 
 **Option 3: Using Visual Studio**
 - Create a new C++ console project
-- Add LFCK.cpp and header files
+- Add SPCC.cpp and header files
 - Configure include paths for the `include/` directory
 - Build the project
 
@@ -88,7 +91,7 @@ make
 ### Basic Command
 
 ```bash
-./LFCK [DatasetPath] [q] [Method] [Eps] ([EdgeFile])
+./SPCC [DatasetPath] [q] [Method] [Eps] ([EdgeFile])
 ```
 
 ### Parameters
@@ -98,27 +101,41 @@ make
   - `3` for triangle counting
   - `4` for 4-clique counting
 - `[Method]`: Algorithm selection
-  - `1` for Baseline Randomized Response (RR)
-  - `2` for K-Star method (optimized)
-- `[Eps]`: Privacy parameter epsilon (will be automatically adjusted by q)
+  - `1` for EPCC (Enhanced Privacy-Preserving Clique Counting)
+  - `2` for SPCC (Secure Privacy-Preserving Clique Counting)
+- `[Eps]`: Privacy parameter epsilon
 - `[EdgeFile]`: (Optional) Edge file name, default is `edges.csv`
 
 ### Examples
 
-**Count triangles on DBLP dataset using K-Star method with ε=1.0:**
+**Count triangles on DBLP dataset using SPCC with ε=1.0:**
 ```bash
-./LFCK ../data/dblp 3 2 1.0
+./SPCC ../data/dblp 3 2 1.0
 ```
 
-**Count 4-cliques on IMDB dataset using Baseline RR with ε=2.0:**
+**Count 4-cliques on IMDB dataset using EPCC with ε=2.0:**
 ```bash
-./LFCK ../data/IMDB 4 1 2.0
+./SPCC ../data/IMDB 4 1 2.0
 ```
 
 **Using a custom edge file:**
 ```bash
-./LFCK ../data/dblp 3 2 1.0 edges_subgraph_10000.csv
+./SPCC ../data/dblp 3 2 1.0 edges_subgraph_10000.csv
 ```
+
+## Algorithm Details
+
+### EPCC (Section 5.1)
+EPCC extends the basic RR baseline with:
+1. **Optimal Padding (Lopt)**: Computed via loss function minimization to balance padding and dropping errors
+2. **Degree-Based Grouping**: Nodes are grouped by noisy degree (with Laplace noise) for targeted RR perturbation
+3. Each node creates (k-1)-tuples from its neighbors, pads/drops to Lopt elements, then applies RR perturbation
+
+### SPCC (Section 5.2)
+SPCC builds on EPCC with additional verification:
+1. **Cross-Checking**: For each reported edge (i,j) in G_i's report, verifies that i is also in G_j's report
+2. **Candidate Validation**: For 4-cliques, after finding potential 3-clique candidates, verifies all mutual cross-edges
+3. These steps filter out false edges introduced by RR perturbation
 
 ## Dataset Format
 
@@ -136,17 +153,10 @@ node1,node2
 - Each subsequent line represents an undirected edge
 - Node IDs should be integers
 
-### Example Datasets Included
-
-- **DBLP**: Co-authorship network from DBLP computer science bibliography
-- **IMDB**: Actor collaboration network from IMDB
-- **MIT**: MIT network data
-- **Orkut**: Social network from Orkut
-
 ## Output
 
 The program will:
-1. Compute the optimal padding parameter for the dataset
+1. Compute the optimal padding parameter (Lopt) for the dataset
 2. Run 10 independent experiments
 3. Report results for each experiment
 4. Output final statistics including:
@@ -157,29 +167,32 @@ The program will:
 ### Sample Output
 
 ```
-Computed optimal padding: 12.5
-Detected NodeNum: 317080
+=== Optimal Padding Length Results ===
+Optimal L: 12
+Total nodes: 317080
+Average k-stars per node: 45.2
 
 === Running 10 experiments ===
 Dataset: ../data/dblp
 Target clique: 3-clique
-Method: K-Star
+Method: SPCC
 
 --- Experiment 1 ---
+Calling SPCC_3Clique...
+Actual number of nodes: 317080
+Original triangle count: 2224385
 ...
-Experiment 1 completed.
-
+Relative error (SPCC, 3-clique): 0.0234
 ...
 
 === Final Results ===
 Number of experiments: 10
 Target clique: 3-clique
 Original triangle count: 2224385
-Method: K-Star
-Optimal padding: 12.5
+Method: SPCC
+Optimal padding (Lopt): 12
 Average relative error: 0.0234
 ```
-
 
 ## Python Preprocessing
 
@@ -190,29 +203,8 @@ cd python
 python3 IMDB.py
 ```
 
-This script:
-- Reads the IMDB matrix format data
-- Constructs actor collaboration networks
-- Outputs edge lists and degree information
-
-## Troubleshooting
-
-### Compilation Errors
-
-- Ensure you have g++ with C++11 support: `g++ --version`
-- Check that the include path is correct in the Makefile
-- Verify all header files are present in `cpp/include/`
-
-### Runtime Errors
-
-- **"cannot open [filename]"**: Check that the dataset path and edge file exist
-- **Memory issues**: Large graphs may require significant RAM; consider using subgraph samples
-- **Segmentation fault**: Ensure the edge file format is correct (CSV with integer node IDs)
-
-
+This script reads the IMDB matrix format data, constructs actor collaboration networks, and outputs edge lists and degree information.
 
 ## Citation
 
-If you use this code in your research, please cite SPCC.
-
-
+If you use this code in your research, please cite the SPCC paper.
