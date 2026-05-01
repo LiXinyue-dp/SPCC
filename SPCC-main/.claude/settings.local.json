@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(g++ -std=c++11 -isystem ./include -c SPCC.cpp -o SPCC.o)",
-      "Bash(g++ -std=c++11 -isystem ./include -march=native -O3 -o SPCC SPCC.o)"
-    ]
-  }
-}
