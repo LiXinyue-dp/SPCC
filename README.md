@@ -29,7 +29,7 @@ This project implements algorithms for counting cliques in graphs under Local Di
 
 ## Features
 
-- **Privacy-Preserving Clique Counting**: Implements Local Differential Privacy for q-clique counting (including 3-clique/triangle and 4-clique)
+- **Privacy-Preserving Clique Counting**: Implements Local Differential Privacy for q-clique counting 
 - **Two-Phase Framework (SPCC)**:
   - **Phase 1 — Degree Estimation & Parameter Setup**: Each user perturbs their true degree with Laplace noise; the server computes optimal parameters (k, L) and assigns degree-homogeneous buckets
   - **Phase 2 — Local Perturbation & Data Collection**: Users construct local k-star representations, apply PD and AGP mechanisms, then the server performs targeted structural estimation
